@@ -1,3 +1,7 @@
+
+##简单的图片示例:  
+![simple](./recyclerViewBaseAdapter.gif)
+
 RecyclerViewBaseAdapter相比BaseRecyclerViewAdapter有以下几点优化:  
 1.泛型应用优化
 ---
