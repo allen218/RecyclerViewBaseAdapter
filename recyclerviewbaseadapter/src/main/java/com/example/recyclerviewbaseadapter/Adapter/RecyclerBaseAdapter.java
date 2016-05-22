@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -27,9 +28,9 @@ public abstract class RecyclerBaseAdapter<D, V extends RecyclerView.ViewHolder> 
     public static final int VIEW_PROGRESS = 0;  //代表Progress类型
     public static final int VIEW_Item = 1;   //代表普通item
 
-    public static final long NET_TIMEOUT = 5000;
-
-    private long netTimeout = NET_TIMEOUT;  //默认超时5秒   这里主要是当数据还没有加载完成,而已经滑倒底部显示没有数据的情况
+//    public static final long NET_TIMEOUT = 5000;
+//
+//    private long netTimeout = NET_TIMEOUT;  //默认超时5秒   这里主要是当数据还没有加载完成,而已经滑倒底部显示没有数据的情况
 
     protected Activity mContext;
 
@@ -41,6 +42,9 @@ public abstract class RecyclerBaseAdapter<D, V extends RecyclerView.ViewHolder> 
 
     private View mProgressBarView;  //加载更多的view
     private View mNotMoreDataView;  //没有更多数据的view
+    private boolean isCanLogin = true;  //是否是能进入
+
+//    private String errorString;  //当数据请求出错时,需要子类设置相关错误信息
 
 
     protected RecyclerBaseAdapter(Activity context, RecyclerView recyclerView) {
@@ -66,17 +70,14 @@ public abstract class RecyclerBaseAdapter<D, V extends RecyclerView.ViewHolder> 
                     lastVisibleItem = linearLayoutManager
                             .findLastVisibleItemPosition();
 
-                    handleLoadMoreNotData(lastVisibleItem);
+//                    handleLoadMoreNotData(lastVisibleItem);
 
-                    if (mProgressBarView != null) {
-                        mProgressBarView.setVisibility(View.VISIBLE);
-                        mNotMoreDataView.setVisibility(View.GONE);
-                    }
+                    handleBottomShowAndHide();
 
                     if (!loading
                             && totalItemCount <= (lastVisibleItem + visibleThreshold + defaultLoadItem)) {
 
-                        netTimeout = NET_TIMEOUT;
+//                        netTimeout = NET_TIMEOUT;
 
                         loading = true;
                         if (onLoadMoreListener != null) {
@@ -88,14 +89,29 @@ public abstract class RecyclerBaseAdapter<D, V extends RecyclerView.ViewHolder> 
         }
     }
 
+    private void handleBottomShowAndHide() {
+        if (mProgressBarView != null && isCanLogin) {
+            if (mProgressBarView.getVisibility() == View.GONE) {
+                mProgressBarView.setVisibility(View.VISIBLE);
+            }
+
+            if (mNotMoreDataView.getVisibility() == View.VISIBLE) {
+                mNotMoreDataView.setVisibility(View.GONE);
+            }
+        }
+    }
+
     /**
      * 处理加载更多没有数据的情况
      *
      * @param lastVisibleItem
      */
-    private void handleLoadMoreNotData(int lastVisibleItem) {
-        if (getItemViewType(lastVisibleItem) == VIEW_PROGRESS
+/*    private void handleLoadMoreNotData(int lastVisibleItem) {
+        if (isCanLogin && getItemViewType(lastVisibleItem) == VIEW_PROGRESS
                 && mProgressBarView.getVisibility() == View.VISIBLE) {
+
+            isCanLogin = false;
+
             new Thread(new Runnable() {
                 @Override
                 public void run() {
@@ -108,23 +124,33 @@ public abstract class RecyclerBaseAdapter<D, V extends RecyclerView.ViewHolder> 
                 }
             }).start();
         }
-    }
+    }*/
 
     /**
      * 设置网络延迟,默认为5000毫秒
      *
      * @param time
      */
-    public void setNetTimeout(long time) {
+/*    public void setNetTimeout(long time) {
         this.netTimeout = time;
-    }
+    }*/
 
     /**
      * 当次加载完成,可以再次进行下拉刷新
      */
     public void setLoadMoreCompleted() {
-        netTimeout = 0;
+//        netTimeout = 0;
         loading = false;
+    }
+
+    /**
+     * 当没有更多数据时,由子类调用
+     */
+    public void setNotData() {
+        if (mProgressBarView != null && mNotMoreDataView != null) {
+            mProgressBarView.setVisibility(View.GONE);
+            mNotMoreDataView.setVisibility(View.VISIBLE);
+        }
     }
 
     /**
@@ -150,18 +176,17 @@ public abstract class RecyclerBaseAdapter<D, V extends RecyclerView.ViewHolder> 
     /**
      * 当刷新完成后调用以隐藏progressbar
      */
-    public void setRefreshCompleted() {
-        mContext.runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                if (mProgressBarView != null) {
-                    mProgressBarView.setVisibility(View.GONE);
-                    mNotMoreDataView.setVisibility(View.VISIBLE);
-                }
-            }
-        });
-    }
-
+//    public void setRefreshCompleted() {
+//        mContext.runOnUiThread(new Runnable() {
+//            @Override
+//            public void run() {
+//                if (mProgressBarView != null) {
+//                    mProgressBarView.setVisibility(View.GONE);
+////                    mNotMoreDataView.setVisibility(View.VISIBLE);
+//                }
+//            }
+//        });
+//    }
     @Override
     public void onBindViewHolder(V holder, int position) {
         D item = getItem(position);
@@ -209,11 +234,17 @@ public abstract class RecyclerBaseAdapter<D, V extends RecyclerView.ViewHolder> 
     @Override
     public int getItemViewType(int position) {
         if (mData.size() == position) {
+
+            if (!TextUtils.isEmpty(getErrorString())) {
+                toast(getErrorString());
+            }
+
             return VIEW_PROGRESS;
         } else {
             return VIEW_Item;
         }
     }
+
 
     protected D getItem(int position) {
         if (position < mData.size()) {
@@ -229,7 +260,16 @@ public abstract class RecyclerBaseAdapter<D, V extends RecyclerView.ViewHolder> 
     }
 
     public void addData(List<D> items) {
-        items.removeAll(mData);
+        boolean isChangeData = items.removeAll(mData);
+
+        if (items.size() == 0) {
+            //走到这里,说明加载的数据全部为重复数据,所以数据没有变化
+            if (mProgressBarView != null) {
+                mProgressBarView.setVisibility(View.GONE);
+                mNotMoreDataView.setVisibility(View.GONE);
+            }
+        }
+
         mData.addAll(items);
 
         notifyDataSetChanged();
@@ -262,4 +302,10 @@ public abstract class RecyclerBaseAdapter<D, V extends RecyclerView.ViewHolder> 
 
     protected abstract V createViewHolder(View view);
 
+    /**
+     * 当网络请求出现错误时,由子类将错误信息返回
+     *
+     * @return
+     */
+    protected abstract String getErrorString();
 }

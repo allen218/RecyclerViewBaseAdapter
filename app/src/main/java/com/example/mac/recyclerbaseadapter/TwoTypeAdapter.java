@@ -11,6 +11,8 @@ import android.widget.TextView;
 import com.example.mac.recyclerbaseadapter.info.DataInfo;
 import com.example.recyclerviewbaseadapter.Adapter.RecyclerBaseAdapter;
 
+import java.util.List;
+
 /**
  * Created by allen on 16/5/22.
  * 两种类型的adapter 一个普通view和一个progressbar view
@@ -36,6 +38,11 @@ public class TwoTypeAdapter extends RecyclerBaseAdapter<DataInfo, TwoTypeAdapter
         return new MainViewHolder(view);
     }
 
+    @Override
+    protected String getErrorString() {
+        return errorString;
+    }
+
     static class MainViewHolder extends RecyclerView.ViewHolder {
         ImageView mHeaderIv; //头像
 
@@ -49,5 +56,16 @@ public class TwoTypeAdapter extends RecyclerBaseAdapter<DataInfo, TwoTypeAdapter
             mNameTv = (TextView) itemView.findViewById(R.id.list_item_name_tv);
             mEmailTv = (TextView) itemView.findViewById(R.id.list_item_email_tv);
         }
+    }
+
+    private String errorString; //错误信息,当正常加载时,需要将其置为空
+
+    public void addErrorInfo(String errorInfo) {
+        this.errorString = errorInfo;
+    }
+
+    public void addDatas(List<DataInfo> list) {
+        errorString = null;
+        super.addData(list);
     }
 }

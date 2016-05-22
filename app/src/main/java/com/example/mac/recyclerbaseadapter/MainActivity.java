@@ -60,16 +60,17 @@ public class MainActivity extends AppCompatActivity {
                     handleItemClick(position, dataInfo));
 
             mAdapter.setOnLoadMoreListener(onLoadMoreListener);
-            mAdapter.addData(datas);
+            mAdapter.addDatas(datas);
 
             mList.setAdapter(mAdapter);
 
             mList.setVisibility(View.VISIBLE);
 
         } else {
-            mAdapter.addData(datas);
+            mAdapter.addDatas(datas);
         }
 
+        //每次加载完成后,设置该方法,让其可以继续加载更多
         mAdapter.setLoadMoreCompleted();
 
     }
